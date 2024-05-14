@@ -2918,7 +2918,7 @@ var src_default = {
   async fetch(request, env) {
     const url = new URL(request.url);
     const host = url.origin;
-    const frontendUrl = 'https://raw.githubusercontent.com/bulianglin/psub/main/frontend.html';
+    const frontendUrl = 'https://raw.githubusercontent.com/EventHorizonV/psub/main/frontend.html';
     const SUB_BUCKET = env.SUB_BUCKET;
     let backend = env.BACKEND.replace(/(https?:\/\/[^/]+).*$/, "$1");
     const subDir = "subscription";
@@ -2993,7 +2993,7 @@ var src_default = {
         } else {
           parsedObj = parseData(url2);
         }
-        if (/^(ssr?|vmess1?|trojan|vless|hysteria):\/\//.test(url2)) {
+        if (/^(ssr?|vmess1?|trojan|vless|hysteria|hysteria2):\/\//.test(url2)) {
           const newLink = replaceInUri(url2, replacements, false);
           if (newLink)
             replacedURIs.push(newLink);
@@ -3067,6 +3067,8 @@ function replaceInUri(link, replacements, isRecovery) {
       return replaceTrojan(link, replacements, isRecovery);
     case link.startsWith("hysteria://"):
       return replaceHysteria(link, replacements);
+    case link.startsWith("hysteria2://"):
+      return replaceHysteria2(link, replacements);  // 新增支持
     default:
       return;
   }
@@ -3197,7 +3199,7 @@ function replaceSS(link, replacements, isRecovery) {
 function replaceTrojan(link, replacements, isRecovery) {
   const randomUUID = generateRandomUUID();
   const randomDomain = generateRandomStr(10) + ".com";
-  const regexMatch = link.match(/(vless|trojan):\/\/(.*?)@(.*):/);
+  const regexMatch = link.match(/(vless|trojan):\/\/(.*?)@(.*?):/);
   if (!regexMatch) {
     return;
   }
@@ -3220,6 +3222,43 @@ function replaceHysteria(link, replacements) {
   const randomDomain = generateRandomStr(12) + ".com";
   replacements[randomDomain] = server;
   return link.replace(server, randomDomain);
+}
+function replaceHysteria2(link, replacements) {
+    const regexMatch = link.match(/hysteria2:\/\/(.*?)@(.*?):(\d+)(\/\?[^#]*)(#.*)?/);
+    if (!regexMatch) {
+        return;
+    }
+
+    let [auth, hostname, port, queryString, fragment] = regexMatch.slice(1);
+
+    // 生成随机字符串用于替换敏感信息
+    const randomAuth = generateRandomStr(12);
+    const randomHostname = generateRandomStr(12) + ".com";
+    const randomPort = Math.floor(Math.random() * 65535);
+
+    // 记录替换
+    replacements[randomAuth] = auth;
+    replacements[randomHostname] = hostname;
+    replacements[randomPort] = port;
+
+    // 替换认证信息、服务器地址和端口
+    auth = randomAuth;
+    hostname = randomHostname;
+    port = randomPort;
+
+    // 检查并替换混淆密码
+    if (queryString.includes('obfs=salamander')) {
+        const passwordMatch = queryString.match(/obfs-password=([^&]*)/);
+        if (passwordMatch) {
+            const originalPassword = passwordMatch[1];
+            const randomPassword = generateRandomStr(12);
+            queryString = queryString.replace(`obfs-password=${originalPassword}`, `obfs-password=${randomPassword}`);
+            replacements[randomPassword] = originalPassword;
+        }
+    }
+
+    // 重构链接
+    return `hysteria2://${auth}@${hostname}:${port}${queryString}${fragment || ''}`;
 }
 function replaceYAML(yamlObj, replacements) {
   if (!yamlObj.proxies) {
